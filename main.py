@@ -3,8 +3,7 @@ import pygame
 # sys.setrecursionlimit(16385)
 
 #Local imports
-import base_func, board, generator
-
+import base_func, board, generator, eval
 
 width, height = 400, 400
 sqr_size = int(width/8)
@@ -27,6 +26,7 @@ while running:
     chess_board.Draw_Board(height, width)
     chess_board.Draw_Pieces()
     if are_moves_generated == False:
+        chess_board.Pawn_promotion()
         moves = moveGenerationObj.Generate_legal_moves(all_moves_made, get_cur_pos=True)
         are_moves_generated = True
         if moves == 'Checkmate':

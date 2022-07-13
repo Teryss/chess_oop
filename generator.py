@@ -1,3 +1,4 @@
+
 import base_func
 
 class MovesGenerator():
@@ -26,13 +27,13 @@ class MovesGenerator():
         if get_cur_pos:
             self.Get_current_pos()
 
-        all_moves = self.Gen_all_moves(all_moves_made)
+        all_moves = self.Gen_all_moves()
         moves_with_castling = self.Add_castle(all_moves)
         only_legal_moves = self.Delete_illegal_moves(moves_with_castling)
         self.moves = only_legal_moves
         return self.moves
 
-    def Gen_all_moves(self, all_moves_made, alt_board = 0):
+    def Gen_all_moves(self, alt_board = 0):
         moves = list()
         temp_moves = list()
         if alt_board == 0:
@@ -45,25 +46,12 @@ class MovesGenerator():
                 piece_type = piece[0]
                 piece_index = checkboard.index(piece)
                 color = 1 if piece_type.islower() else -1
-                
                 #PAWN
                 if piece_type.lower() == 'p': 
                     if checkboard[piece_index + 8 * color] == '': #1 UP
                         temp_moves.append(piece_index + 8 * color)
                         if (piece_index <=15 and color == 1 or piece_index >= 48 and color == -1) and checkboard[piece_index + 16 * color] == '': #2 UP]
                             temp_moves.append(piece_index + 16 * color)
-                    #EN PASSANT
-                    if (24 >= piece_index >= 31 and color == -1) or (32 >= piece_index >= 39 and color == 1):
-                        # if ( (checkboard[piece_index + 1][0] == 'p' or checkboard[piece_index - 1][0] == 'p')  and color == -1 ) or ( (checkboard[piece_index + 1][0] == 'P' or checkboard[piece_index - 1][0] == 'P') and color == 1 ):
-                        print('1')
-                        #     if 
-                        if checkboard[piece_index + 1] != '':
-                            print('2')
-                            if (checkboard[piece_index + 1][0] == 'p' and color == -1) or (checkboard[piece_index + 1][0] == 'P' and color == 1):
-                                print('3')
-                                if all_moves_made[-1] == piece_index + 1:
-                                    print('EN PASSANT')
-                        
                     # if 24 >= piece_index >= 31 and color == -1 or 32 >= piece_index >= 39 and color == 1:
                     #     print('piece index: {} piece to the right {} last move {}'.format(piece_index, checkboard[piece_index+1][0], all_moves_made[-1]))
                     #     if checkboard[piece_index + 1][0].tolower() == 'p' and Compare_pieces_colour(piece_index + 1, piece_index, checkboard) and all_moves_made[-1] == piece_index + 1:
@@ -71,12 +59,10 @@ class MovesGenerator():
                     #         print("IT WORKS")
                     #         #TODO IMPLEMENT EN PASSANT
                     #TAKING
-                    if base_func.Square_to_row_and_column(piece_index)[1] != 0:
-                        if checkboard[piece_index + 7 * color] != '' and base_func.Compare_pieces_colour(piece_index, piece_index + 7 * color, checkboard):
-                            temp_moves.append(piece_index + 7 * color)
-                    if base_func.Square_to_row_and_column(piece_index)[1] != 7:
-                        if checkboard[piece_index + 9 * color] != '' and base_func.Compare_pieces_colour(piece_index, piece_index + 9 * color, checkboard):
-                            temp_moves.append(piece_index + 9 * color)
+                    if checkboard[piece_index + 7 * color] != '' and base_func.Compare_pieces_colour(piece_index, piece_index + 7 * color, checkboard) and base_func.Square_to_row_and_column(piece_index)[1] != 0:
+                        temp_moves.append(piece_index + 7 * color)
+                    if checkboard[piece_index + 9 * color] != '' and base_func.Compare_pieces_colour(piece_index, piece_index + 9 * color, checkboard) and base_func.Square_to_row_and_column(piece_index)[1] != 7:
+                        temp_moves.append(piece_index + 9 * color)
                 #ROOK
                 if piece_type.lower() == 'r': 
                     row,col = base_func.Square_to_row_and_column(piece_index)
@@ -116,7 +102,7 @@ class MovesGenerator():
                                 temp_moves.append(dest_sqr)
                             elif base_func.Compare_pieces_colour(piece_index, dest_sqr, checkboard):
                                 temp_moves.append(dest_sqr)
-                
+
                 if temp_moves != []:
                     moves.append([piece_index, temp_moves])
                 temp_moves = []  
@@ -125,7 +111,7 @@ class MovesGenerator():
     def Delete_illegal_moves(self, moves):
         checkboard = self.piece_pos
         check = self.Look_for_checks_in_posstion(moves, checkboard)
-        
+
         if check != '':
             moves_to_delete = list()
             counter_1, counter_2 = 0,0
@@ -233,4 +219,4 @@ class MovesGenerator():
                     kings_pos[0] = self.piece_pos.index(piece)
                 if piece[0] == 'K':
                     kings_pos[1] = self.piece_pos.index(piece)
-        return kings_pos
+        return kings_pos 

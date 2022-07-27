@@ -1,4 +1,3 @@
-
 import base_func
 
 class MovesGenerator():
@@ -19,27 +18,42 @@ class MovesGenerator():
             "left_rook_black" : False,
             "right_rook_black" : False,
         }
+        self.en_passant = False
+
 
     def Get_current_pos(self):
         self.piece_pos = self.board.Get_pos()
 
-    def Generate_legal_moves(self, all_moves_made, get_cur_pos):
+    def Generate_legal_moves(self, all_moves_made, get_cur_pos, which_player_to_move):
         if get_cur_pos:
             self.Get_current_pos()
 
-        all_moves = self.Gen_all_moves()
+        if len(all_moves_made) > 0:
+            print(all_moves_made[-1])
+        
+        all_moves, self.en_passant = self.Gen_all_moves(made_moves = all_moves_made, return_enpassant=True)
         moves_with_castling = self.Add_castle(all_moves)
-        only_legal_moves = self.Delete_illegal_moves(moves_with_castling)
+        only_legal_moves = self.Delete_illegal_moves(moves_with_castling, which_player_to_move)
         self.moves = only_legal_moves
         return self.moves
 
-    def Gen_all_moves(self, alt_board = 0):
+    def Gen_all_moves(self, alt_board = 0, made_moves = 0, return_enpassant = False):
         moves = list()
         temp_moves = list()
+
         if alt_board == 0:
             checkboard = self.piece_pos
         else:
             checkboard = alt_board
+
+        is_en_passsant_possible = False
+        found_en_passant = False
+        if made_moves != 0:
+            if len(made_moves) > 0:
+                try:
+                    is_en_passsant_possible = True if checkboard[made_moves[-1][1]][0].lower() == 'p' and abs(made_moves[-1][0] - made_moves[-1][1]) == 16 else False
+                except:
+                    is_en_passsant_possible = False
 
         for piece in checkboard:
             if piece != '':
@@ -48,20 +62,31 @@ class MovesGenerator():
                 color = 1 if piece_type.islower() else -1
                 #PAWN
                 if piece_type.lower() == 'p': 
-                    if checkboard[piece_index + 8 * color] == '': #1 UP
+                    if -1 < piece_index + 8 * color < 64 and checkboard[piece_index + 8 * color] == '': #1 UP
                         temp_moves.append(piece_index + 8 * color)
                         if (piece_index <=15 and color == 1 or piece_index >= 48 and color == -1) and checkboard[piece_index + 16 * color] == '': #2 UP]
                             temp_moves.append(piece_index + 16 * color)
-                    # if 24 >= piece_index >= 31 and color == -1 or 32 >= piece_index >= 39 and color == 1:
-                    #     print('piece index: {} piece to the right {} last move {}'.format(piece_index, checkboard[piece_index+1][0], all_moves_made[-1]))
-                    #     if checkboard[piece_index + 1][0].tolower() == 'p' and Compare_pieces_colour(piece_index + 1, piece_index, checkboard) and all_moves_made[-1] == piece_index + 1:
-                    #         # temp_moves.append(piece_index + 1 + 8 * color)
-                    #         print("IT WORKS")
-                    #         #TODO IMPLEMENT EN PASSANT
+                    if is_en_passsant_possible:
+                        if piece_index + 1 == made_moves[-1][1]:
+                            if base_func.Compare_pieces_colour(piece_index, made_moves[-1][1], checkboard):
+                                if color == 1 :
+                                    temp_moves.append(piece_index + 9 * color)
+                                else:
+                                    temp_moves.append(piece_index + 7 * color)
+                                found_en_passant = True
+                                print('1')
+                        elif piece_index - 1 == made_moves[-1][1]:
+                            if base_func.Compare_pieces_colour(piece_index, made_moves[-1][1], checkboard):
+                                if color == 1 :
+                                    temp_moves.append(piece_index + 7 * color)
+                                else:
+                                    temp_moves.append(piece_index + 9 * color)
+                                found_en_passant = True
+                                print('2')
                     #TAKING
-                    if checkboard[piece_index + 7 * color] != '' and base_func.Compare_pieces_colour(piece_index, piece_index + 7 * color, checkboard) and base_func.Square_to_row_and_column(piece_index)[1] != 0:
+                    if -1 < piece_index + 7 * color < 64 and checkboard[piece_index + 7 * color] != '' and base_func.Compare_pieces_colour(piece_index, piece_index + 7 * color, checkboard) and base_func.Square_to_row_and_column(piece_index)[1] != 0:
                         temp_moves.append(piece_index + 7 * color)
-                    if checkboard[piece_index + 9 * color] != '' and base_func.Compare_pieces_colour(piece_index, piece_index + 9 * color, checkboard) and base_func.Square_to_row_and_column(piece_index)[1] != 7:
+                    if -1 < piece_index + 7 * color < 64 and checkboard[piece_index + 9 * color] != '' and base_func.Compare_pieces_colour(piece_index, piece_index + 9 * color, checkboard) and base_func.Square_to_row_and_column(piece_index)[1] != 7:
                         temp_moves.append(piece_index + 9 * color)
                 #ROOK
                 if piece_type.lower() == 'r': 
@@ -97,7 +122,7 @@ class MovesGenerator():
                     row,col = base_func.Square_to_row_and_column(piece_index)
                     for direction in self.directions['king']:
                         dest_sqr = base_func.Row_and_column_to_square(row + direction[0], col + direction[1])
-                        if 0 <= dest_sqr <= 64:
+                        if 0 <= dest_sqr <= 63:
                             if checkboard[dest_sqr] == '':
                                 temp_moves.append(dest_sqr)
                             elif base_func.Compare_pieces_colour(piece_index, dest_sqr, checkboard):
@@ -105,51 +130,52 @@ class MovesGenerator():
 
                 if temp_moves != []:
                     moves.append([piece_index, temp_moves])
-                temp_moves = []  
+                temp_moves = []
+        if return_enpassant:
+            return moves, found_en_passant
         return moves
 
-    def Delete_illegal_moves(self, moves):
+    def Delete_illegal_moves(self, moves, player_turn):
         checkboard = self.piece_pos
+        #IF THERE IS ALREADY A CHECK IN POSITION
         check = self.Look_for_checks_in_posstion(moves, checkboard)
+        moves_to_delete = list()
+        counter_1, counter_2 = 0,0
+        for i in range(len(moves)):
+            for move in moves[i][1]:
+                counter_1 += 1
+                alt_pieces = [x for x in checkboard]
+                alt_pieces[move] = alt_pieces[moves[i][0]]
+                alt_pieces[moves[i][0]] = ''
+                alt_moves = self.Gen_all_moves(alt_pieces)
+                who_got_checked = self.Look_for_checks_in_posstion(alt_moves, alt_pieces)
+                if who_got_checked == 'w_k_check' and player_turn == 1 or who_got_checked == 'b_k_check' and player_turn == -1:
+                    moves_to_delete.append((i,move))
+                    counter_2 += 1
 
-        if check != '':
-            moves_to_delete = list()
-            counter_1, counter_2 = 0,0
-            for i in range(len(moves)):
-                if (checkboard[moves[i][0]][0].islower() and check == 'w_k_check') or (checkboard[moves[i][0]][0].isupper() and check == 'b_k_check'):
-                    for move in moves[i][1]:
-                        counter_1 += 1
-                        alt_pieces = [x for x in checkboard]
-                        alt_pieces[move] = alt_pieces[moves[i][0]]
-                        alt_pieces[moves[i][0]] = ''
-                        alt_moves = self.Gen_all_moves(alt_pieces)
-                        if self.Look_for_checks_in_posstion(alt_moves, alt_pieces):
-                            moves_to_delete.append((i,move))
-                            counter_2 += 1
-            if counter_1 == counter_2:
-                global running
-                running = False
-                return 'Checkmate'
-            else:
-                # print(counter_1, " ;; ", counter_2)
-                # print("Check detected!")
-                k_pos = self.Locate_kings_on_board()
-                self.board.Change_checked_king_square(k_pos[1] if check == 'b_k_check' else k_pos[0])
-            for move in moves_to_delete:
-                if type(move) is tuple:
-                    if move[1] in moves[move[0]][1]:
-                        moves[move[0]][1].remove(move[1])
+        if counter_1 == counter_2 and check != '':
+            global running
+            running = False
+            return 'Checkmate'
         else:
+            k_pos = self.Locate_kings_on_board()
+            if check != '':
+                self.board.Change_checked_king_square(k_pos[1] if check == 'b_k_check' else k_pos[0])
+
+        for move in moves_to_delete:
+            if type(move) is tuple:
+                if move[1] in moves[move[0]][1]:
+                    moves[move[0]][1].remove(move[1])
+
+        if check == '':
             self.board.Change_checked_king_square(-10)
         return moves
 
     def Add_castle(self, moves):
         for i in range(len(moves)):
             if self.piece_pos[moves[i][0]][0] == "K":
-                global moves_b_k_index
                 moves_b_k_index = i
             elif self.piece_pos[moves[i][0]][0] == "k":
-                global moves_w_k_index
                 moves_w_k_index = i
 
         if self.did_piece_move['w_k'] == False:
@@ -167,7 +193,7 @@ class MovesGenerator():
     def Look_for_checks_in_posstion(self, check_moves, check_pieces):
         all_squares_attacked_by_white = list()
         all_squares_attacked_by_black = list()
-
+        w_k,b_k = -10,-10
         for piece in check_pieces:
             if(piece != ''):
                 if(piece[0] == 'k'): 
@@ -180,15 +206,22 @@ class MovesGenerator():
                 all_squares_attacked_by_white += move[1]
             if(check_pieces[move[0]][0].isupper()):
                 all_squares_attacked_by_black += move[1]
-        if w_k in all_squares_attacked_by_black:
+        if w_k == -10 or w_k in all_squares_attacked_by_black:
+            if b_k == -10 or b_k in all_squares_attacked_by_white:
+                return "b_k_check"
             return "w_k_check"
-        if b_k in all_squares_attacked_by_white:
+        if b_k == -10 or b_k in all_squares_attacked_by_white:
+            if w_k == -10 or w_k in all_squares_attacked_by_white:
+                return "w_k_check"
             return "b_k_check"
         return ''
 
     def CheckIfMoveIsInGeneratedMoves(self,curr_sqr, dest_sqr):
+        print(self.en_passant)
         for piece in self.moves:
             if curr_sqr == piece[0] and int(dest_sqr) in piece[1]:
+
+                #CASTLING
                 if curr_sqr == 63 or dest_sqr == 63: self.did_piece_move['right_rook_black'] = True
                 elif curr_sqr == 56 or dest_sqr == 56: self.did_piece_move['left_rook_black'] = True
                 elif curr_sqr == 0 or dest_sqr == 0: self.did_piece_move['left_rook_white'] = True
@@ -209,6 +242,14 @@ class MovesGenerator():
                         self.piece_pos[60] = self.piece_pos[63]
                         self.piece_pos[63] = '' 
                     self.did_piece_move['b_k'] = True
+                ####
+                #EN PASSANT
+                if self.en_passant:
+                    if self.piece_pos[curr_sqr][0].lower() == 'p' and self.piece_pos[dest_sqr] == '':
+                        pawn_color = 1 if self.piece_pos[curr_sqr][0].islower() else -1
+                        if self.piece_pos[dest_sqr - 8 * pawn_color] != '' and self.piece_pos[dest_sqr - 8 * pawn_color][0].lower() == 'p':
+                            if self.piece_pos[curr_sqr] != self.piece_pos[dest_sqr - 8 * pawn_color]:
+                                self.piece_pos[dest_sqr - 8 * pawn_color] = ''
                 return True
         return False
     def Locate_kings_on_board(self):
